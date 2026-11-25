@@ -23,6 +23,11 @@ implementation("com.github.ArkFlame.MCProtocolLib:protocol:af-26.3-codecfix-1")
 | #890 | All protocol hotbar buttons (0-40) and drag-button IDs added to `MoveToHotbarAction`/`FillStackAction`. |
 | #745 | Chunk palette reads reject truncated entry counts and short long arrays instead of reading past the buffer. |
 | #823 | Written chunk sections normalize palettes so biome/block palettes always have index 0 and correctly sized data arrays. |
+| PR #943 | Entity events decode by explicit vanilla 26.3 IDs with `UnknownEntityEvent` forwarding fallback; 26.3 brewing/enchantment properties and potent sulfur block handling. |
+| PR #933 | `ContainerType.from` tolerates modded menu IDs; raw type ID is carried through `ClientboundOpenScreenPacket`. |
+| PR #916 | Custom entity and painting types via `EntityType`/`PaintingType` interfaces, builtin enums and compatibility aliases; fork-specific constants preserved at their original ordinals. |
+
+Programmatic regression coverage: `WireCodecRegressionTest`, `ClientboundEntityEventPacketTest`, `ClientboundBlockEventPacketTest`, `ClientboundOpenScreenPacketTest`, `CustomEntityTypeTest`, `NettyHelperTest`, `ContainerActionValuesTest`, `ChunkPaletteRegressionTest`. No live-server tests.
 
 ## Verification
 
