@@ -53,6 +53,27 @@ public class NettyHelper {
         }
     }
 
+    /**
+     * Returns the address to connect to when a proxy is used. The destination host is kept unresolved so the
+     * proxy can resolve it: DNS and SRV lookups made locally would leak the requested host and bypass the proxy.
+     */
+    public static SocketAddress proxyAddress(SocketAddress address) {
+        if (address instanceof InetSocketAddress inetAddress) {
+            String host = inetAddress.getHostString();
+            if (host.length() > 1 && host.charAt(0) == '[' && host.charAt(host.length() - 1) == ']') {
+                host = host.substring(1, host.length() - 1);
+            }
+            try {
+                host = IDN.toASCII(host);
+            } catch (IllegalArgumentException ignored) {
+                // Keep the original host if it is not a valid internationalized domain name.
+            }
+            return InetSocketAddress.createUnresolved(host, inetAddress.getPort());
+        }
+
+        return address;
+    }
+
     public static SocketAddress resolveAddress(Session session, SocketAddress address) {
         if (address instanceof InetSocketAddress inetAddress && inetAddress.isUnresolved()) {
             SocketAddress resolved = resolveAddress(session, inetAddress.getHostString(), inetAddress.getPort());
