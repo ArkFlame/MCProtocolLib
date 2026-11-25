@@ -34,6 +34,9 @@ public class MapPalette implements Palette {
         this(bitsPerEntry);
 
         int paletteLength = MinecraftTypes.readVarInt(in);
+        if (paletteLength < 0 || paletteLength > in.readableBytes()) {
+            throw new IllegalArgumentException("Palette size exceeds available input: " + paletteLength);
+        }
         for (int i = 0; i < paletteLength; i++) {
             int state = MinecraftTypes.readVarInt(in);
             this.idToState[i] = state;

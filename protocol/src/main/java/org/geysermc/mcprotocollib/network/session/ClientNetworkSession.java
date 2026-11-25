@@ -58,7 +58,9 @@ public class ClientNetworkSession extends NetworkSession implements ClientSessio
             .channelFactory(getChannelFactory())
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, getFlag(BuiltinFlags.CLIENT_CONNECT_TIMEOUT, 30) * 1000)
             .group(eventLoopGroup)
-            .remoteAddress(NettyHelper.resolveAddress(this, remoteAddress))
+            .remoteAddress(this.proxy == null
+                ? NettyHelper.resolveAddress(this, remoteAddress)
+                : NettyHelper.proxyAddress(remoteAddress))
             .localAddress(bindAddress)
             .handler(getChannelHandler());
 

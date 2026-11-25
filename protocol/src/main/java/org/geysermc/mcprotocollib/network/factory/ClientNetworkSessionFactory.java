@@ -40,7 +40,7 @@ public final class ClientNetworkSessionFactory {
     }
 
     public ClientNetworkSessionFactory setBindAddress(String bindAddress, int port) {
-        return setRemoteSocketAddress(InetSocketAddress.createUnresolved(bindAddress, port));
+        return setBindSocketAddress(InetSocketAddress.createUnresolved(bindAddress, port));
     }
 
     public ClientNetworkSession create() {
