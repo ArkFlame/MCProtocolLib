@@ -1796,10 +1796,56 @@ public class MinecraftTypes {
             storage = null;
         } else {
             storage = new BitStorage(bitsPerEntry, paletteType.getStorageSize());
+            if (buf.readableBytes() < storage.getData().length * Long.BYTES) {
+                throw new IllegalArgumentException("Palette data array exceeds available input");
+            }
             MinecraftTypes.readFixedSizeLongArray(buf, storage.getData());
         }
 
         return DataPalette.create(palette, storage, paletteType, registrySize);
+    }
+
+    /**
+     * Normalizes a palette for writing. The vanilla client expects the data array to contain exactly as many longs
+     * as the number of block or biome entries, regardless of the bits per entry. Palettes read from third-party
+     * chunks can carry a different number of longs, so resize the storage before sending it to the client.
+     */
+    private static DataPalette normalizePalette(DataPalette palette) {
+        Palette decodedPalette = palette.getPalette();
+        BitStorage storage = palette.getStorage();
+        if (decodedPalette instanceof SingletonPalette || storage == null) {
+            return palette;
+        }
+
+        PaletteType paletteType = palette.getPaletteType();
+        int bitsPerEntry = storage.getBitsPerEntry();
+        int maximumPaletteSize = bitsPerEntry >= 31 ? Integer.MAX_VALUE : 1 << bitsPerEntry;
+        // An empty palette has no entry at index 0, which makes the vanilla client fail with
+        // "Missing Palette entry for index 0" when it reads the all-zero data array.
+        int paletteSize = Math.max(1, Math.min(decodedPalette.size(), maximumPaletteSize));
+        if (decodedPalette instanceof ListPalette) {
+            Palette resized = new ListPalette(bitsPerEntry);
+            for (int i = 0; i < paletteSize; i++) {
+                resized.stateToId(decodedPalette.idToState(i));
+            }
+            decodedPalette = resized;
+        } else if (decodedPalette instanceof MapPalette) {
+            Palette resized = new MapPalette(bitsPerEntry);
+            for (int i = 0; i < paletteSize; i++) {
+                resized.stateToId(decodedPalette.idToState(i));
+            }
+            decodedPalette = resized;
+        }
+
+        int[] states = new int[paletteType.getStorageSize()];
+        for (int i = 0; i < states.length; i++) {
+            states[i] = decodedPalette.idToState(storage.get(i));
+        }
+        BitStorage resized = new BitStorage(bitsPerEntry, paletteType.getStorageSize());
+        for (int i = 0; i < states.length; i++) {
+            resized.set(i, decodedPalette.stateToId(states[i]));
+        }
+        return DataPalette.create(decodedPalette, resized, paletteType, palette.getGlobalPaletteBitsPerEntry());
     }
 
     public static void writeDataPalette(ByteBuf buf, DataPalette palette) {
@@ -1848,8 +1894,8 @@ public class MinecraftTypes {
     public static void writeChunkSection(ByteBuf buf, ChunkSection section) {
         buf.writeShort(section.getBlockCount());
         buf.writeShort(section.getFluidCount());
-        MinecraftTypes.writeDataPalette(buf, section.getBlockData());
-        MinecraftTypes.writeDataPalette(buf, section.getBiomeData());
+        MinecraftTypes.writeDataPalette(buf, MinecraftTypes.normalizePalette(section.getBlockData()));
+        MinecraftTypes.writeDataPalette(buf, MinecraftTypes.normalizePalette(section.getBiomeData()));
     }
 
     public static <E extends Enum<E>> EnumSet<E> readEnumSet(ByteBuf buf, Class<E> type) {
