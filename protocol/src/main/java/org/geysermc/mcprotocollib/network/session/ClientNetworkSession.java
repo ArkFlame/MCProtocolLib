@@ -76,7 +76,22 @@ public class ClientNetworkSession extends NetworkSession implements ClientSessio
         });
 
         if (wait) {
-            handleFuture.join();
+            awaitConnect(handleFuture);
+        }
+    }
+
+    /**
+     * Waits for the connection attempt to finish. Unlike {@link CompletableFuture#join()} this reacts to
+     * {@link Thread#interrupt()}: the interrupt flag is preserved and the session is disconnected (#925).
+     */
+    void awaitConnect(CompletableFuture<@Nullable Void> handleFuture) {
+        try {
+            handleFuture.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            this.disconnect(this.getGenericDisconnectMessage(e), e);
+        } catch (java.util.concurrent.ExecutionException e) {
+            throw new IllegalStateException(e.getCause());
         }
     }
 
